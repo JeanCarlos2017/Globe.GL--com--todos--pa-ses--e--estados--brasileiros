@@ -1,0 +1,93 @@
+<head>
+    <meta charset="UTF-8">
+    <style>
+    body { margin: 0; }
+    #dados_hover{
+            background-color: #31373B;
+            color: white;
+            opacity: 0.9;
+            padding: 10px;
+            line-height: 1.8;
+     }
+  </style>
+
+    <script src="//unpkg.com/d3"></script>
+
+    <script src="//unpkg.com/globe.gl"></script>
+    <!--<script src="../../dist/globe.gl.js"></script>-->
+</head>
+
+<body>
+<div id="globeViz"></div>
+
+<script>
+    const colorScale = d3.scaleSequentialSqrt(d3.interpolateYlOrRd);
+
+
+     const getVal = feat => feat.properties.GDP_MD_EST / Math.max(1e5, feat.properties.POP_EST)
+      || feat.properties.codigo_ibg / Math.max(1e5, feat.properties.regiao_id);
+
+    fetch('../datasets/ne_110m_admin_0_countries.geojson').then(res => res.json()).then(countries =>
+    {
+
+       fetch('../datasets/brasil.geojson').then(res => res.json()).then(brasil=>
+      {
+        const maxVal = Math.max(...countries.features.map(getVal));
+        colorScale.domain([0, maxVal]);
+
+        mundo =  {
+            "type" : "FeatureCollection",
+            "features": brasil.features.concat(countries.features)
+        }
+        const world = Globe()
+        .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
+        .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+        .polygonsData(mundo.features)
+        .polygonAltitude(0.06)
+        .polygonCapColor(feat => colorScale(getVal(feat)))
+        .polygonSideColor(() => 'rgba(0, 100, 0, 0.15)')
+        .polygonStrokeColor(() => '#111')
+        .polygonLabel(({ properties: d }) =>
+            `
+              <div id = "dados_hover">
+               <b>Informações </b></br>
+               ${(() => {
+                if(d.ADMIN !== undefined) {
+                    return `
+                            <b>${d.ADMIN} (${d.ISO_A2}):</b> <br />
+                            GDP: <i>${d.GDP_MD_EST}</i> M$<br/>
+                            Population: <i>${d.POP_EST}</i></br>
+                        `;
+                }
+                else {
+                    return `
+                        <b>${d.nome} ${d.sigla}</b>
+                       `;
+                    }
+                })()}
+                <\div>
+            `
+        )
+        .onPolygonHover(hoverD => world
+          .polygonAltitude(d => d === hoverD ? 0.12 : 0.06)
+          .polygonCapColor(d => d === hoverD ? 'steelblue' : colorScale(getVal(d)))
+        )
+        .polygonsTransitionDuration(300)
+
+      (document.getElementById('globeViz'))
+       });
+    });
+
+    /*function anexaInformacoesDivHover(){
+        var currentDiv = document.getElementById("dados_hover");
+        var texto = document.createElement("P");
+        texto.innerHTML = "<b>$d.ADMIN d.ISO_A2 </b> <br />"+
+                          "GDP: <i>d.GDP_MD_EST</i> <br/>"+
+                          "Population: <i>d.POP_EST</i></br>"+
+                          "janks: <b> mudança </b>";
+         currentDiv.appendChild(texto);
+    }*/
+  </script>
+
+
+</body>
